@@ -185,9 +185,24 @@ impl JsonlData {
                         .unwrap_or_else(|_| "Invalid JSON row.".to_string())
                 );
 
-                let all_possible_keys = self.get_all_keys_seen_across_dataset();
+                // let all_possible_keys = self.get_all_keys_seen_across_dataset();
                 // let keys_in_row = self.get
             }
+        }
+    }
+
+    pub fn replace_record(&mut self, record_id: usize, new_json: serde_json::Value) {
+        if let Some(vec) = &mut self.data {
+            if record_id < vec.len() {
+                vec[record_id] = new_json;
+            } else {
+                error!(
+                    "Cannot replace record {}, which is out of bounds!",
+                    record_id
+                );
+            }
+        } else {
+            error!("Self.data is None, cannot replace record!");
         }
     }
 }
