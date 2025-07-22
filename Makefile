@@ -10,5 +10,12 @@ build:  ## cargo build
 release:  ## cargo build --release
 	cargo build --release
 
-test_1: release ./target/release/jsonl-tools data/conversation_log-20250630-2312.json ## ./target/release/jsonl-tools --filename=data/conversation_log-20250630-2312.json
-	./target/release/jsonl-tools --filename=data/conversation_log-20250630-2312.json
+test: release data/test.jsonl
+	cargo test
+
+test_1:
+	cargo run --bin main -- --filename=data/test.jsonl
+
+
+# test_1: release ./target/release/jsonl-tools data/conversation_log-20250630-2312.json ## ./target/release/jsonl-tools --filename=data/conversation_log-20250630-2312.json
+# 	./target/release/jsonl-tools --filename=data/conversation_log-20250630-2312.json

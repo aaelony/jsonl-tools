@@ -1,18 +1,20 @@
 use num_format::{Locale, ToFormattedString};
 use serde_json::Value;
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     fs::File,
     io::{self, BufRead, BufReader},
     path::PathBuf,
 };
-use tracing::{Level, debug, error, info, span, trace, warn};
+use tracing::{Level, error, info, span, warn};
+// use tracing::{Level, debug, error, info, span, trace, warn};
 
 pub struct JsonlData {
     pub filename: String,
     pub data: Option<Vec<Value>>,
     pub keys_seen: Option<HashSet<String>>,
     pub key_freqs: Option<Vec<(String, usize)>>,
+    pub rows_with_missing_keys: Option<Vec<usize>>,
 }
 
 impl JsonlData {
@@ -37,6 +39,7 @@ impl JsonlData {
             data,
             keys_seen: Some(HashSet::new()),
             key_freqs: Some(Vec::new()),
+            rows_with_missing_keys: Some(Vec::new()),
         };
 
         let keys_seen = if instance.data.is_some() {
@@ -53,8 +56,15 @@ impl JsonlData {
             empty_vec
         };
 
+        let rows_with_missing_keys = if instance.data.is_some() {
+            Some(instance.identify_rows_with_missing_keys())
+        } else {
+            Some(Vec::new())
+        };
+
         instance.keys_seen = keys_seen;
         instance.key_freqs = key_freqs;
+        instance.rows_with_missing_keys = rows_with_missing_keys;
         instance
     }
 
@@ -73,6 +83,26 @@ impl JsonlData {
         }
 
         Ok(json_values)
+    }
+
+    pub fn get_top_key_combinations(&self, n: usize) -> Vec<(Vec<String>, usize)> {
+        let mut combination_freqs: HashMap<Vec<String>, usize> = HashMap::new();
+
+        if let Some(ref data) = self.data {
+            for val in data {
+                if let Value::Object(map) = val {
+                    let mut keys: Vec<String> = map.keys().cloned().collect();
+                    keys.sort();
+                    *combination_freqs.entry(keys).or_insert(0) += 1;
+                }
+            }
+        }
+
+        let mut sorted_combinations: Vec<(Vec<String>, usize)> =
+            combination_freqs.into_iter().collect();
+        sorted_combinations.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+
+        sorted_combinations.into_iter().take(n).collect()
     }
 
     pub fn analyze_json_keys(&self) -> Vec<(String, usize)> {
@@ -123,6 +153,53 @@ impl JsonlData {
         }
     }
 
+    fn get_keys_in_row(&self, value: &Value) -> HashSet<String> {
+        let mut keys = HashSet::new();
+        self.collect_keys_from_value(value, &mut keys, String::new());
+        keys
+    }
+
+    fn collect_keys_from_value(&self, value: &Value, keys: &mut HashSet<String>, prefix: String) {
+        match value {
+            Value::Object(map) => {
+                for (k, _) in map {
+                    let _ = if prefix.is_empty() {
+                        k.clone()
+                    } else {
+                        format!("{}.{}", prefix, k)
+                    };
+                }
+            }
+            Value::Array(arr) => {
+                for (i, v) in arr.iter().enumerate() {
+                    let array_key = if prefix.is_empty() {
+                        format!("[{}]", i)
+                    } else {
+                        format!("{}[{}]", prefix, i)
+                    };
+                    self.collect_keys_from_value(v, keys, array_key);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    pub fn identify_rows_with_missing_keys(&self) -> Vec<usize> {
+        let mut rows_with_missing_keys = Vec::new();
+        if let Some(ref data) = self.data {
+            let all_keys = self.get_all_keys_seen_across_dataset();
+
+            for (i, v) in data.iter().enumerate() {
+                let row_keys = self.get_keys_in_row(v);
+                let missing_keys: HashSet<_> = all_keys.difference(&row_keys).collect();
+                if !missing_keys.is_empty() {
+                    rows_with_missing_keys.push(i);
+                }
+            }
+        }
+        rows_with_missing_keys
+    }
+
     pub fn get_all_keys_seen_across_dataset(&self) -> HashSet<String> {
         let key_counts = self.analyze_json_keys();
         return key_counts.into_iter().map(|(key, _)| key).collect();
@@ -171,6 +248,37 @@ impl JsonlData {
             }
         }
         info!("\n");
+        info!("Rows with missing keys: {:?}", self.rows_with_missing_keys);
+    }
+
+    pub fn show_top_key_combinations_report(&self, n: usize) {
+        let span = span!(
+            Level::INFO,
+            "show_top_key_combinations_report",
+            filename = self.filename
+        );
+        info!(
+            "Top {} Most Frequent JSON Key combinations in {}",
+            n, self.filename
+        );
+        let combos = self.get_top_key_combinations(n);
+
+        if combos.is_empty() {
+            warn!("No JSON key combinations found.");
+            return;
+        }
+
+        for (i, (keys, count)) in combos.iter().enumerate() {
+            let keys_str = format!("({})", keys.join(", "));
+            let formatted_count = count.to_formatted_string(&Locale::en);
+            info!(
+                "{}. {} - {} occurrence{}",
+                i + 1,
+                keys_str,
+                formatted_count,
+                if *count == 1 { "" } else { "s" }
+            );
+        }
     }
 
     pub fn show_record(&self, record_id: usize) {
@@ -185,8 +293,15 @@ impl JsonlData {
                         .unwrap_or_else(|_| "Invalid JSON row.".to_string())
                 );
 
-                // let all_possible_keys = self.get_all_keys_seen_across_dataset();
-                // let keys_in_row = self.get
+                let all_keys = self.get_all_keys_seen_across_dataset();
+                let row_keys = self.get_keys_in_row(row);
+                let missing_keys: Vec<_> = all_keys.difference(&row_keys).collect();
+
+                if !missing_keys.is_empty() {
+                    warn!("Missing keys in this record: {:?}", missing_keys);
+                } else {
+                    info!("This record contains all keys found in the dataset.");
+                }
             }
         }
     }
@@ -195,6 +310,10 @@ impl JsonlData {
         if let Some(vec) = &mut self.data {
             if record_id < vec.len() {
                 vec[record_id] = new_json;
+
+                self.keys_seen = Some(self.get_all_keys_seen_across_dataset());
+                self.key_freqs = Some(self.analyze_json_keys());
+                self.rows_with_missing_keys = Some(self.identify_rows_with_missing_keys());
             } else {
                 error!(
                     "Cannot replace record {}, which is out of bounds!",
