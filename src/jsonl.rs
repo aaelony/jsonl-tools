@@ -68,7 +68,7 @@ impl JsonlData {
         instance
     }
 
-    pub fn read_json_lines(path: &PathBuf) -> io::Result<Vec<Value>> {
+    fn read_json_lines(path: &PathBuf) -> io::Result<Vec<Value>> {
         let file = File::open(&path)?;
         let reader = BufReader::new(file);
 
@@ -85,7 +85,7 @@ impl JsonlData {
         Ok(json_values)
     }
 
-    pub fn get_top_key_combinations(&self, n: usize) -> Vec<(Vec<String>, usize)> {
+    fn get_top_key_combinations(&self, n: usize) -> Vec<(Vec<String>, usize)> {
         let mut combination_freqs: HashMap<Vec<String>, usize> = HashMap::new();
 
         if let Some(ref data) = self.data {
@@ -105,7 +105,7 @@ impl JsonlData {
         sorted_combinations.into_iter().take(n).collect()
     }
 
-    pub fn analyze_json_keys(&self) -> Vec<(String, usize)> {
+    fn analyze_json_keys(&self) -> Vec<(String, usize)> {
         let mut key_counts: BTreeMap<String, usize> = BTreeMap::new();
 
         if let Some(ref data) = self.data {
@@ -184,7 +184,7 @@ impl JsonlData {
         }
     }
 
-    pub fn identify_rows_with_missing_keys(&self) -> Vec<usize> {
+    fn identify_rows_with_missing_keys(&self) -> Vec<usize> {
         let mut rows_with_missing_keys = Vec::new();
         if let Some(ref data) = self.data {
             let all_keys = self.get_all_keys_seen_across_dataset();
@@ -200,7 +200,7 @@ impl JsonlData {
         rows_with_missing_keys
     }
 
-    pub fn get_all_keys_seen_across_dataset(&self) -> HashSet<String> {
+    fn get_all_keys_seen_across_dataset(&self) -> HashSet<String> {
         let key_counts = self.analyze_json_keys();
         return key_counts.into_iter().map(|(key, _)| key).collect();
     }
