@@ -56,33 +56,16 @@ impl From<serde_json::Error> for HttpError {
 pub trait JsonlReader {
     type Error: std::error::Error + Send + Sync + 'static;
 
-    /// Load data from the source
     fn load(&mut self) -> Result<(), Self::Error>;
-
-    /// Get the total number of records
     fn len(&self) -> usize;
-
-    /// Check if the dataset is empty
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
-
-    /// Get a record by index
     fn get(&self, index: usize) -> Option<&Value>;
-
-    /// Get a mutable reference to a record by index (for backends that support mutation)
     fn get_mut(&mut self, index: usize) -> Option<&mut Value>;
-
-    /// Replace a record at the given index
     fn replace(&mut self, index: usize, value: Value) -> Result<(), Self::Error>;
-
-    /// Iterator over all records
     fn iter(&self) -> Box<dyn Iterator<Item = &Value> + '_>;
-
-    /// Get the source identifier (filename, URL, etc.)
     fn source_name(&self) -> &str;
-
-    /// Optional: Add a new record (for backends that support appending)
     fn push(&mut self, value: Value) -> Result<(), Self::Error>;
 }
 
