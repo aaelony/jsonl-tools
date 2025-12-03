@@ -32,15 +32,15 @@ $ more data/test.jsonl
 
 ```
 
-## Test Example
+### Test Example
 
 ```bash
  cargo run --release -- --filename=data/test.jsonl 
 ```
 
-## Example Results
+### Example Results
 
-```log
+```shell-session
 
 2025-12-03T22:50:12.817000Z  INFO jsonl_tools: Welcome to jsonl_tools (Version 0.1.0)!
 2025-12-03T22:50:12.817046Z  INFO parse_cli_arguments: jsonl_tools: enter
