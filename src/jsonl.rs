@@ -452,8 +452,8 @@ impl<R: JsonlReader> JsonlData<R> {
             filename = self.filename()
         );
         let _ = span.enter();
-        info!("===============================");
-        info!(
+        println!("===============================");
+        println!(
             "Found {} unique JSON keys in file {}",
             self.keys_seen.as_ref().map_or(0, |k| k.len()),
             self.filename()
@@ -468,7 +468,7 @@ impl<R: JsonlReader> JsonlData<R> {
         );
         let _ = span.enter();
 
-        info!("===============================");
+        println!("===============================");
 
         if let Some(ref key_freqs) = self.key_freqs {
             let max_key_len = key_freqs
@@ -478,15 +478,15 @@ impl<R: JsonlReader> JsonlData<R> {
                 .unwrap_or(20)
                 .max(20);
 
-            info!("{:<width$} {:>12}", "Key", "Count", width = max_key_len);
-            info!("{}", "-".repeat(max_key_len + 14));
+            println!("{:<width$} {:>12}", "Key", "Count", width = max_key_len);
+            println!("{}", "-".repeat(max_key_len + 14));
             for (k, freq) in key_freqs.iter() {
                 let fmt_freq = freq.to_formatted_string(&Locale::en);
-                info!("\t{:<width$} {:>12}", k, fmt_freq, width = max_key_len);
+                println!("\t{:<width$} {:>12}", k, fmt_freq, width = max_key_len);
             }
         }
-        info!("\n");
-        info!("Rows with missing keys: {:?}", self.rows_with_missing_keys);
+        println!("\n");
+        println!("Rows with missing keys: {:?}", self.rows_with_missing_keys);
     }
 
     pub fn show_top_key_combinations_report(&self, n: usize) {
@@ -495,7 +495,7 @@ impl<R: JsonlReader> JsonlData<R> {
             "show_top_key_combinations_report",
             filename = self.filename()
         );
-        info!(
+        println!(
             "Top {} Most Frequent JSON Key combinations in {}",
             n,
             self.filename()
@@ -510,7 +510,7 @@ impl<R: JsonlReader> JsonlData<R> {
         for (i, (keys, count)) in combos.iter().enumerate() {
             let keys_str = format!("({})", keys.join(", "));
             let formatted_count = count.to_formatted_string(&Locale::en);
-            info!(
+            println!(
                 "{}. {} - {} occurrence{}",
                 i + 1,
                 keys_str,
@@ -525,7 +525,7 @@ impl<R: JsonlReader> JsonlData<R> {
         let _ = span.enter();
 
         if let Some(row) = self.reader.get(record_id) {
-            info!(
+            println!(
                 "Analysis of Record {}: {}",
                 record_id,
                 serde_json::to_string_pretty(row)
@@ -539,7 +539,7 @@ impl<R: JsonlReader> JsonlData<R> {
             if !missing_keys.is_empty() {
                 warn!("Missing keys in this record: {:?}", missing_keys);
             } else {
-                info!("This record contains all keys found in the dataset.");
+                println!("This record contains all keys found in the dataset.");
             }
         } else {
             error!("Record {} not found", record_id);

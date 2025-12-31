@@ -7,7 +7,7 @@ use tracing::{Level, error, info, span};
 use tracing_subscriber::{self, fmt::format::FmtSpan};
 
 fn print_welcome() {
-    info!(
+    println!(
         "Welcome to {} (Version {})!",
         env!("CARGO_PKG_NAME"),
         env!("CARGO_PKG_VERSION")
@@ -17,7 +17,7 @@ fn print_welcome() {
 /// Initializes tracing subscriber for logging.
 pub fn init_tracing() {
     tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
+        .with_max_level(Level::WARN)
         .with_span_events(FmtSpan::ENTER | FmtSpan::EXIT)
         .init(); // No logging will print prior to this line!
     print_welcome();
@@ -120,7 +120,8 @@ pub fn parse_cli_arguments() -> Option<DataSource> {
 pub fn run() {
     // Initialize logging
     init_tracing();
-
+    print_welcome();
+    
     // Parse the arguments to determine data source
     match parse_cli_arguments() {
         Some(DataSource::File(filename)) => {

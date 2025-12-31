@@ -10,6 +10,9 @@ build:  ## cargo build
 release:  ## cargo build --release
 	cargo build --release
 
+publish: release 
+	cp -p target/release/jsonl_tools ~/bin 
+
 test: release data/test.jsonl
 	cargo test
 
